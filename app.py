@@ -74,7 +74,7 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
         
         # BYPASS: Le decimos que es OpenAI, pero apuntamos a la URL de Groq
         motor_blindado = LLM(
-            model="openai/llama-3.1-70b-versatile",,
+            model="openai/llama-3.1-70b-versatile",
             api_key=groq_key,
             base_url="https://api.groq.com/openai/v1",
             temperature=0
@@ -160,7 +160,7 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
                 
                 # BYPASS: Le decimos que es OpenAI, pero apuntamos a la URL de Groq
                 motor_blindado = LLM(
-                    model="openai/llama-3.1-70b-versatile",,
+                    model="openai/llama-3.1-70b-versatile",
                     api_key=groq_key,
                     base_url="https://api.groq.com/openai/v1",
                     temperature=0
