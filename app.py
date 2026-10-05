@@ -9,7 +9,7 @@ if "GROQ_API_KEY" not in os.environ and "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
 from crewai import Agent, Task, Crew, Process
-from crewai_tools import MDXSearchTool
+from crewai_tools import FileReadTool
 from langchain_groq import ChatGroq
 
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
@@ -83,19 +83,8 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 
     @st.cache_resource
     def crear_agente_pmo():
-        # Configuración estricta para forzar HuggingFace y Groq
-        configuracion_rag = dict(
-            llm=dict(
-                provider="groq", 
-                config=dict(model="llama3-70b-8192")
-            ),
-            embedder=dict(
-                provider="huggingface",
-                config=dict(model="sentence-transformers/all-MiniLM-L6-v2")
-            )
-        )
-        
-        md_tool = MDXSearchTool(mdx=md_path, config=configuracion_rag)
+        # FileReadTool lee el archivo directamente a la memoria de la IA sin usar bases de datos conflictivas
+        md_tool = FileReadTool(file_path=md_path)
         
         return Agent(
             role='Especialista en Normativas PMO',
