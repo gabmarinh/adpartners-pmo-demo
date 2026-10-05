@@ -1,7 +1,6 @@
 streamlit
 pandas
 plotly
-crewai
-crewai-tools
+crewai==1.15.23
+crewai-tools==1.15.23
 tabulate
-litellm
