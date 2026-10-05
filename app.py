@@ -71,9 +71,8 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Bypass comprobado: usa la estructura de OpenAI apuntando al modelo activo de Groq
     return LLM(
-        model="openai/gpt-oss-120b",
+        model="openai/openai/gpt-oss-120b",   # 1º prefijo: proveedor (CrewAI) · 2º: ID real en Groq
         api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         temperature=0
