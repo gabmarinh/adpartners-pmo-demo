@@ -4,7 +4,6 @@ import streamlit as st
 import plotly.express as px
 
 # Para la nube, usamos la API Key que configuraremos en los secretos de Streamlit
-os.environ["OPENAI_API_KEY"] = "sk-fake-key" # Bypass para herramientas locales
 os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
 if "GROQ_API_KEY" not in os.environ and "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
@@ -84,21 +83,28 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 
     @st.cache_resource
     def crear_agente_pmo():
-        # Configuramos un lector vectorial gratuito (HuggingFace) en lugar de OpenAI
-        md_tool = MDXSearchTool(
-            mdx=md_path,
-            config=dict(
-                embedder=dict(
-                    provider="huggingface",
-                    config=dict(model="sentence-transformers/all-MiniLM-L6-v2")
-                )
+        # Configuración estricta para forzar HuggingFace y Groq
+        configuracion_rag = dict(
+            llm=dict(
+                provider="groq", 
+                config=dict(model="llama3-70b-8192")
+            ),
+            embedder=dict(
+                provider="huggingface",
+                config=dict(model="sentence-transformers/all-MiniLM-L6-v2")
             )
         )
+        
+        md_tool = MDXSearchTool(mdx=md_path, config=configuracion_rag)
+        
         return Agent(
             role='Especialista en Normativas PMO',
             goal='Responder dudas basándose exclusivamente en el documento Markdown.',
             backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos.',
-            tools=[md_tool], llm=nube_llm, verbose=True, allow_delegation=False
+            tools=[md_tool], 
+            llm=nube_llm, 
+            verbose=True, 
+            allow_delegation=False
         )
 
     if "messages" not in st.session_state:
