@@ -10,8 +10,7 @@ st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀",
 
 # ---------------- CONFIGURACIÓN DE SEGURIDAD ----------------
 os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
-if "GROQ_API_KEY" not in os.environ and "GROQ_API_KEY" in st.secrets:
-    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+groq_key = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else os.environ.get("GROQ_API_KEY", "")
 
 # ---------------- SISTEMA DE LOGIN ----------------
 if "logged_in" not in st.session_state:
@@ -73,9 +72,11 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
     def crear_agente_pmo():
         md_tool = FileReadTool(file_path=md_path)
         
-        # Conexión limpia y blindada usando la clase nativa LLM
-        motor_groq = LLM(
-            model="groq/llama3-70b-8192",
+        # BYPASS: Le decimos que es OpenAI, pero apuntamos a la URL de Groq
+        motor_blindado = LLM(
+            model="openai/llama3-70b-8192",
+            api_key=groq_key,
+            base_url="https://api.groq.com/openai/v1",
             temperature=0
         )
         
@@ -84,7 +85,7 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
             goal='Responder dudas basándose exclusivamente en el documento Markdown.',
             backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos del archivo proporcionado.',
             tools=[md_tool], 
-            llm=motor_groq, 
+            llm=motor_blindado, 
             verbose=True, 
             allow_delegation=False
         )
@@ -115,7 +116,7 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
                     st.markdown(resultado)
                     st.session_state.messages.append({"role": "assistant", "content": resultado})
                 except Exception as e:
-                    st.error(f"Ocurrió un error al procesar la solicitud: {e}")
+                    st.error(f"Error interno del servidor: {e}")
 
 # ==========================================================
 # DEMO 2: TABLERO INTELIGENTE
@@ -157,8 +158,11 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
             with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
                 datos_texto = df.to_markdown(index=False)
                 
-                motor_groq = LLM(
-                    model="groq/llama3-70b-8192",
+                # BYPASS: Le decimos que es OpenAI, pero apuntamos a la URL de Groq
+                motor_blindado = LLM(
+                    model="openai/llama3-70b-8192",
+                    api_key=groq_key,
+                    base_url="https://api.groq.com/openai/v1",
                     temperature=0
                 )
                 
@@ -166,7 +170,7 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
                     role='Analista Senior de PMO y Riesgos',
                     goal='Analizar KPIs financieros y cruzar el estado RAG con niveles de riesgo.',
                     backstory='Auditor experto de AD Partners. Eres preciso y te enfocas en mitigación de riesgos.',
-                    llm=motor_groq, 
+                    llm=motor_blindado, 
                     verbose=True, 
                     allow_delegation=False
                 )
