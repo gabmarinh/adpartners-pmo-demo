@@ -1,0 +1,6 @@
+ID_Proyecto,Nombre_Proyecto,Fase_Actual,Estado_RAG,Nivel_Riesgo,Avance_%,Presupuesto_Planificado_USD,Costo_Actual_USD,Desviacion_Presupuesto_%
+PRJ-001,Migración Cloud,Desarrollo,Green,Bajo,45,150000,140000,-6.67
+PRJ-002,App Clientes,Testing,Red,Alto,80,80000,95000,18.75
+PRJ-003,ERP Finanzas,Implementación,Green,Bajo,95,200000,195000,-2.5
+PRJ-004,Portal RRHH,Planificación,Amber,Medio,15,45000,20000,-55.56
+PRJ-005,Ciberseguridad ISO,Auditoría,Red,Alto,60,120000,135000,12.5

@@ -1,0 +1,6 @@
+streamlit
+pandas
+plotly
+crewai
+crewai-tools
+langchain-groq
