@@ -2,18 +2,17 @@ import os
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-
-# Para la nube, usamos la API Key que configuraremos en los secretos de Streamlit
-os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
-if "GROQ_API_KEY" not in os.environ and "GROQ_API_KEY" in st.secrets:
-    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
-
 from crewai import Agent, Task, Crew, Process
 from crewai_tools import FileReadTool
 from langchain_groq import ChatGroq
 
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
 st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀", layout="wide")
+
+# ---------------- CONFIGURACIÓN DE SEGURIDAD ----------------
+os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
+if "GROQ_API_KEY" not in os.environ and "GROQ_API_KEY" in st.secrets:
+    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
 # ---------------- SISTEMA DE LOGIN ----------------
 if "logged_in" not in st.session_state:
@@ -64,34 +63,25 @@ demo_seleccionada = st.sidebar.radio(
     ["Demo 1: Asistente Normativas PMO", "Demo 2: Tablero Tracking Beneficios", "⚙️ Panel de Administración"]
 )
 
-# ---------------- MOTOR LLM (NUBE - GROQ) ----------------
-@st.cache_resource
-def iniciar_llm_nube():
-    # Usamos el modelo ultrarrápido de Llama 3 en Groq
-    return ChatGroq(model_name="llama3-70b-8192", temperature=0)
-
-nube_llm = iniciar_llm_nube()
-
 # ==========================================================
 # DEMO 1: ASISTENTE RAG
 # ==========================================================
 if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
     st.title("🤖 Asistente de Normativas PMO")
     
-    # Ruta relativa para la nube
     md_path = "normativas_pmo_demo.md"
 
-    @st.cache_resource
     def crear_agente_pmo():
-        # FileReadTool lee el archivo directamente a la memoria de la IA sin usar bases de datos conflictivas
+        # Instanciamos el LLM localmente en la función para evitar conflictos de caché con Pydantic
+        llm_groq = ChatGroq(model_name="llama3-70b-8192", temperature=0)
         md_tool = FileReadTool(file_path=md_path)
         
         return Agent(
             role='Especialista en Normativas PMO',
             goal='Responder dudas basándose exclusivamente en el documento Markdown.',
-            backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos.',
+            backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos del archivo proporcionado.',
             tools=[md_tool], 
-            llm=nube_llm, 
+            llm=llm_groq, 
             verbose=True, 
             allow_delegation=False
         )
@@ -105,15 +95,24 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 
     if prompt := st.chat_input("Ej: ¿Cuáles son los pasos para cerrar un proyecto?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
+        with st.chat_message("user"): 
+            st.markdown(prompt)
             
         with st.chat_message("assistant"):
             with st.spinner("Buscando en repositorios..."):
-                agente = crear_agente_pmo()
-                tarea = Task(description=f'Responde usando el documento Markdown: "{prompt}"', expected_output='Respuesta estructurada en viñetas.', agent=agente)
-                resultado = str(Crew(agents=[agente], tasks=[tarea], process=Process.sequential).kickoff())
-                st.markdown(resultado)
-                st.session_state.messages.append({"role": "assistant", "content": resultado})
+                try:
+                    agente = crear_agente_pmo()
+                    tarea = Task(
+                        description=f'Lee el contenido del archivo y responde la siguiente duda del usuario: "{prompt}"', 
+                        expected_output='Respuesta detallada y estructurada en viñetas.', 
+                        agent=agente
+                    )
+                    crew = Crew(agents=[agente], tasks=[tarea], process=Process.sequential)
+                    resultado = str(crew.kickoff())
+                    st.markdown(resultado)
+                    st.session_state.messages.append({"role": "assistant", "content": resultado})
+                except Exception as e:
+                    st.error(f"Ocurrió un error al procesar la solicitud: {e}")
 
 # ==========================================================
 # DEMO 2: TABLERO INTELIGENTE
@@ -121,7 +120,6 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
     st.title("📊 Tablero de Control: KPIs y Estado RAG")
     
-    # Ruta relativa para la nube
     csv_path = "proyectos_kpi.csv"
     
     try:
@@ -141,30 +139,48 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
 
         st.divider()
 
+        def color_rag(val):
+            if val == 'Green': return 'background-color: #28a745; color: white; font-weight: bold;'
+            elif val == 'Amber': return 'background-color: #ffc107; color: black; font-weight: bold;'
+            elif val == 'Red': return 'background-color: #dc3545; color: white; font-weight: bold;'
+            return ''
+        
+        st.subheader("Detalle Operativo de Proyectos")
+        st.dataframe(df.style.map(color_rag, subset=['Estado_RAG']), use_container_width=True)
+
+        st.divider()
+
         if st.button("Generar Reporte Ejecutivo con IA 🧠", type="primary"):
             with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
                 datos_texto = df.to_markdown(index=False)
+                llm_groq = ChatGroq(model_name="llama3-70b-8192", temperature=0)
                 
                 analista_financiero = Agent(
                     role='Analista Senior de PMO y Riesgos',
                     goal='Analizar KPIs financieros y cruzar el estado RAG con niveles de riesgo.',
-                    backstory='Auditor experto de AD Partners.',
-                    llm=nube_llm, verbose=True, allow_delegation=False
+                    backstory='Auditor experto de AD Partners. Eres preciso y te enfocas en mitigación de riesgos.',
+                    llm=llm_groq, 
+                    verbose=True, 
+                    allow_delegation=False
                 )
-                tarea_analisis = Task(description=f"Analiza:\n\n{datos_texto}\n\nConcéntrate en proyectos 'Red' y 'Amber'.", expected_output="Un reporte ejecutivo estructurado.", agent=analista_financiero)
+                tarea_analisis = Task(
+                    description=f"Analiza la siguiente matriz:\n\n{datos_texto}\n\nConcéntrate explícitamente en proyectos 'Red' y 'Amber'.", 
+                    expected_output="Un reporte ejecutivo estructurado evaluando el riesgo y desviaciones.", 
+                    agent=analista_financiero
+                )
                 reporte_final = str(Crew(agents=[analista_financiero], tasks=[tarea_analisis], process=Process.sequential).kickoff())
                 
                 st.success("Reporte generado.")
                 st.info(reporte_final)
 
     except FileNotFoundError:
-        st.error(f"No se encontró el archivo CSV en la nube.")
+        st.error(f"No se encontró el archivo CSV en la ruta especificada.")
 
 # ==========================================================
 # PANEL DE ADMINISTRACIÓN
 # ==========================================================
 elif demo_seleccionada == "⚙️ Panel de Administración":
-    st.title("⚙️ Gestión de Base de Conocimientos")
+    st.title("⚙️️ Gestión de Base de Conocimientos")
     if st.session_state.role != "admin":
         st.error("🚫 ACCESO DENEGADO")
     else:
