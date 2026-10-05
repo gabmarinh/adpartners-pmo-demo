@@ -5,3 +5,4 @@ crewai
 crewai-tools
 langchain-groq
 pydantic>=2.5.0
+sentence-transformers
