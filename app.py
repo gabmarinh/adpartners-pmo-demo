@@ -10,7 +10,12 @@ st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀",
 
 # ---------------- CONFIGURACIÓN DE SEGURIDAD ----------------
 os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
-groq_key = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else os.environ.get("GROQ_API_KEY", "")
+
+# Extracción segura de la API Key para la nube
+try:
+    groq_key = st.secrets["GROQ_API_KEY"]
+except Exception:
+    groq_key = os.environ.get("GROQ_API_KEY", "")
 
 # ---------------- SISTEMA DE LOGIN ----------------
 if "logged_in" not in st.session_state:
@@ -62,6 +67,21 @@ demo_seleccionada = st.sidebar.radio(
 )
 
 # ==========================================================
+# MOTOR DE IA GLOBAL
+# ==========================================================
+@st.cache_resource
+def iniciar_motor_ia():
+    # Bypass comprobado: usa la estructura de OpenAI apuntando al modelo activo de Groq
+    return LLM(
+        model="openai/gpt-oss-120b",
+        api_key=groq_key,
+        base_url="https://api.groq.com/openai/v1",
+        temperature=0
+    )
+
+motor_blindado = iniciar_motor_ia()
+
+# ==========================================================
 # DEMO 1: ASISTENTE RAG
 # ==========================================================
 if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
@@ -71,14 +91,6 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 
     def crear_agente_pmo():
         md_tool = FileReadTool(file_path=md_path)
-        
-        # BYPASS: Le decimos que es OpenAI, pero apuntamos a la URL de Groq
-        motor_blindado = LLM(
-            model="openai/llama-3.3-70b-versatile",
-            api_key=groq_key,
-            base_url="https://api.groq.com/openai/v1",
-            temperature=0
-        )
         
         return Agent(
             role='Especialista en Normativas PMO',
@@ -116,7 +128,7 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
                     st.markdown(resultado)
                     st.session_state.messages.append({"role": "assistant", "content": resultado})
                 except Exception as e:
-                    st.error(f"Error interno del servidor: {e}")
+                    st.error(f"Error en el servidor: {e}")
 
 # ==========================================================
 # DEMO 2: TABLERO INTELIGENTE
@@ -157,14 +169,6 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
         if st.button("Generar Reporte Ejecutivo con IA 🧠", type="primary"):
             with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
                 datos_texto = df.to_markdown(index=False)
-                
-                # BYPASS: Le decimos que es OpenAI, pero apuntamos a la URL de Groq
-                motor_blindado = LLM(
-                    model="openai/llama-3.3-70b-versatile",
-                    api_key=groq_key,
-                    base_url="https://api.groq.com/openai/v1",
-                    temperature=0
-                )
                 
                 analista_financiero = Agent(
                     role='Analista Senior de PMO y Riesgos',
