@@ -84,7 +84,16 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 
     @st.cache_resource
     def crear_agente_pmo():
-        md_tool = MDXSearchTool(mdx=md_path) # Simplified tool setup for cloud
+        # Configuramos un lector vectorial gratuito (HuggingFace) en lugar de OpenAI
+        md_tool = MDXSearchTool(
+            mdx=md_path,
+            config=dict(
+                embedder=dict(
+                    provider="huggingface",
+                    config=dict(model="sentence-transformers/all-MiniLM-L6-v2")
+                )
+            )
+        )
         return Agent(
             role='Especialista en Normativas PMO',
             goal='Responder dudas basándose exclusivamente en el documento Markdown.',
