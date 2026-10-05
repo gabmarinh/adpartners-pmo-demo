@@ -4,7 +4,6 @@ import streamlit as st
 import plotly.express as px
 from crewai import Agent, Task, Crew, Process
 from crewai_tools import FileReadTool
-from langchain_groq import ChatGroq
 
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
 st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀", layout="wide")
@@ -72,8 +71,6 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
     md_path = "normativas_pmo_demo.md"
 
     def crear_agente_pmo():
-        # Instanciamos el LLM localmente en la función para evitar conflictos de caché con Pydantic
-        llm_groq = ChatGroq(model_name="llama3-70b-8192", temperature=0)
         md_tool = FileReadTool(file_path=md_path)
         
         return Agent(
@@ -81,7 +78,7 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
             goal='Responder dudas basándose exclusivamente en el documento Markdown.',
             backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos del archivo proporcionado.',
             tools=[md_tool], 
-            llm=llm_groq, 
+            llm="groq/llama3-70b-8192", 
             verbose=True, 
             allow_delegation=False
         )
@@ -153,13 +150,12 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
         if st.button("Generar Reporte Ejecutivo con IA 🧠", type="primary"):
             with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
                 datos_texto = df.to_markdown(index=False)
-                llm_groq = ChatGroq(model_name="llama3-70b-8192", temperature=0)
                 
                 analista_financiero = Agent(
                     role='Analista Senior de PMO y Riesgos',
                     goal='Analizar KPIs financieros y cruzar el estado RAG con niveles de riesgo.',
                     backstory='Auditor experto de AD Partners. Eres preciso y te enfocas en mitigación de riesgos.',
-                    llm=llm_groq, 
+                    llm="groq/llama3-70b-8192", 
                     verbose=True, 
                     allow_delegation=False
                 )
@@ -180,7 +176,7 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
 # PANEL DE ADMINISTRACIÓN
 # ==========================================================
 elif demo_seleccionada == "⚙️ Panel de Administración":
-    st.title("⚙️️ Gestión de Base de Conocimientos")
+    st.title("⚙️ Gestión de Base de Conocimientos")
     if st.session_state.role != "admin":
         st.error("🚫 ACCESO DENEGADO")
     else:
