@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import FileReadTool
 
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
@@ -73,12 +73,18 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
     def crear_agente_pmo():
         md_tool = FileReadTool(file_path=md_path)
         
+        # Conexión limpia y blindada usando la clase nativa LLM
+        motor_groq = LLM(
+            model="groq/llama3-70b-8192",
+            temperature=0
+        )
+        
         return Agent(
             role='Especialista en Normativas PMO',
             goal='Responder dudas basándose exclusivamente en el documento Markdown.',
             backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos del archivo proporcionado.',
             tools=[md_tool], 
-            llm="groq/llama3-70b-8192", 
+            llm=motor_groq, 
             verbose=True, 
             allow_delegation=False
         )
@@ -151,11 +157,16 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
             with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
                 datos_texto = df.to_markdown(index=False)
                 
+                motor_groq = LLM(
+                    model="groq/llama3-70b-8192",
+                    temperature=0
+                )
+                
                 analista_financiero = Agent(
                     role='Analista Senior de PMO y Riesgos',
                     goal='Analizar KPIs financieros y cruzar el estado RAG con niveles de riesgo.',
                     backstory='Auditor experto de AD Partners. Eres preciso y te enfocas en mitigación de riesgos.',
-                    llm="groq/llama3-70b-8192", 
+                    llm=motor_groq, 
                     verbose=True, 
                     allow_delegation=False
                 )
