@@ -79,9 +79,9 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Conexión limpia a Groq con el modelo oficial vigente
+    # Usamos el modelo actual y oficial recomendado por la documentación de Groq
     return LLM(
-        model="groq/gpt-oss-120b", 
+        model="groq/llama-3.3-70b-versatile", 
         api_key=groq_key,
         temperature=0
     )
