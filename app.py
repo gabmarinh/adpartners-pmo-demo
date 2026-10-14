@@ -5,20 +5,13 @@ import plotly.express as px
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import FileReadTool
 
-# --- PARCHE DE SEGURIDAD PARA EVITAR EL BUG DE CACHÉ DE LITELLM ---
-try:
-    import crewai.llms.cache as crew_cache
-    crew_cache.mark_cache_breakpoint = lambda msg: msg
-except Exception:
-    pass
-# ------------------------------------------------------------------
-
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
 st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀", layout="wide")
 
 # ---------------- CONFIGURACIÓN DE SEGURIDAD ----------------
 os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
 
+# Extracción segura de la API Key para la nube
 try:
     groq_key = st.secrets["GROQ_API_KEY"]
 except Exception:
@@ -78,9 +71,11 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
+    # Ruta blindada con doble prefijo y base URL de Groq
     return LLM(
-        model="groq/llama-3.3-70b-versatile",
+        model="openai/openai/gpt-oss-120b",   # 1º prefijo: proveedor (CrewAI) · 2º: ID real en Groq
         api_key=groq_key,
+        base_url="https://api.groq.com/openai/v1",
         temperature=0
     )
 
@@ -98,9 +93,9 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
         md_tool = FileReadTool(file_path=md_path)
         
         return Agent(
-            role='Especialista en Normativas y Metodología PMO',
-            goal='Responder dudas basándose exclusivamente en el manual oficial de Electroperú.',
-            backstory='Consultor experto en gestión de portafolios y proyectos. Siempre justificas tu respuesta extrayendo datos y códigos exactos del manual provisto.',
+            role='Especialista en Normativas PMO',
+            goal='Responder dudas basándose exclusivamente en el documento Markdown.',
+            backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos del archivo proporcionado.',
             tools=[md_tool], 
             llm=motor_blindado, 
             verbose=True, 
@@ -114,18 +109,18 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ej: ¿Cuáles son los procesos transversales de la PMO?"):
+    if prompt := st.chat_input("Ej: ¿Cuáles son los pasos para cerrar un proyecto?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): 
             st.markdown(prompt)
             
         with st.chat_message("assistant"):
-            with st.spinner("Buscando en el manual corporativo..."):
+            with st.spinner("Buscando en repositorios..."):
                 try:
                     agente = crear_agente_pmo()
                     tarea = Task(
-                        description=f'Lee el contenido del manual y responde la siguiente duda del usuario de forma estructurada y profesional: "{prompt}"', 
-                        expected_output='Respuesta detallada y estructurada en viñetas citando apartados o códigos del manual.', 
+                        description=f'Lee el contenido del archivo y responde la siguiente duda del usuario: "{prompt}"', 
+                        expected_output='Respuesta detallada y estructurada en viñetas.', 
                         agent=agente
                     )
                     crew = Crew(agents=[agente], tasks=[tarea], process=Process.sequential)
@@ -139,7 +134,7 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 # DEMO 2: TABLERO INTELIGENTE
 # ==========================================================
 elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
-    st.title("📊 Tablero de Control: KPIs y Estado RAG - Cartera Electroperú")
+    st.title("📊 Tablero de Control: KPIs y Estado RAG")
     
     csv_path = "proyectos_kpi.csv"
     
@@ -154,9 +149,9 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
         
         col_pie1, col_pie2 = st.columns(2)
         with col_pie1:
-            st.plotly_chart(px.pie(df, names='Estado_RAG', hole=0.4, title='Estado RAG de Cartera', color='Estado_RAG', color_discrete_map={'Green':'#28a745', 'Amber':'#ffc107', 'Red':'#dc3545'}), use_container_width=True)
+            st.plotly_chart(px.pie(df, names='Estado_RAG', hole=0.4, title='Estado RAG', color='Estado_RAG', color_discrete_map={'Green':'#28a745', 'Amber':'#ffc107', 'Red':'#dc3545'}), use_container_width=True)
         with col_pie2:
-            st.plotly_chart(px.pie(df, names='Nivel_Riesgo', hole=0.4, title='Nivel de Riesgo Operativo', color='Nivel_Riesgo', color_discrete_map={'Bajo':'#28a745', 'Medio':'#ffc107', 'Alto':'#dc3545'}), use_container_width=True)
+            st.plotly_chart(px.pie(df, names='Nivel_Riesgo', hole=0.4, title='Nivel de Riesgo', color='Nivel_Riesgo', color_discrete_map={'Bajo':'#28a745', 'Medio':'#ffc107', 'Alto':'#dc3545'}), use_container_width=True)
 
         st.divider()
 
@@ -172,29 +167,29 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
         st.divider()
 
         if st.button("Generar Reporte Ejecutivo con IA 🧠", type="primary"):
-            with st.spinner("El Analista Financiero IA está procesando la cartera..."):
+            with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
                 datos_texto = df.to_markdown(index=False)
                 
                 analista_financiero = Agent(
-                    role='Analista Senior de PMO y Gestión de Riesgos',
-                    goal='Analizar KPIs financieros, cronogramas y cruzar estados RAG para la gerencia.',
-                    backstory='Auditor experto asignado a la cuenta de Electroperú. Destacas por tu rigor técnico y enfoque en mitigación de desviaciones.',
+                    role='Analista Senior de PMO y Riesgos',
+                    goal='Analizar KPIs financieros y cruzar el estado RAG con niveles de riesgo.',
+                    backstory='Auditor experto de AD Partners. Eres preciso y te enfocas en mitigación de riesgos.',
                     llm=motor_blindado, 
                     verbose=True, 
                     allow_delegation=False
                 )
                 tarea_analisis = Task(
-                    description=f"Analiza la siguiente matriz de la cartera de proyectos:\n\n{datos_texto}\n\nElabora un reporte ejecutivo enfocándote en las desviaciones de presupuesto, proyectos en estado 'Red' y 'Amber', y aporta recomendaciones directas de control.", 
-                    expected_output="Un reporte ejecutivo estructurado evaluando el riesgo, rendimiento financiero y acciones correctivas.", 
+                    description=f"Analiza la siguiente matriz:\n\n{datos_texto}\n\nConcéntrate explícitamente en proyectos 'Red' y 'Amber'.", 
+                    expected_output="Un reporte ejecutivo estructurado evaluando el riesgo y desviaciones.", 
                     agent=analista_financiero
                 )
                 reporte_final = str(Crew(agents=[analista_financiero], tasks=[tarea_analisis], process=Process.sequential).kickoff())
                 
-                st.success("Reporte ejecutivo generado con éxito.")
+                st.success("Reporte generado.")
                 st.info(reporte_final)
 
     except FileNotFoundError:
-        st.error(f"No se encontró el archivo de datos de KPIs en el repositorio.")
+        st.error(f"No se encontró el archivo CSV en la ruta especificada.")
 
 # ==========================================================
 # PANEL DE ADMINISTRACIÓN
@@ -205,4 +200,4 @@ elif demo_seleccionada == "⚙️ Panel de Administración":
         st.error("🚫 ACCESO DENEGADO")
     else:
         st.success("✅ Acceso Autorizado: Perfil Administrador")
-        st.markdown("Plataforma configurada con los repositorios oficiales de Electroperú. Versión Cloud Activa.")
+        st.markdown("Función de subida de archivos deshabilitada en la versión Demo Cloud.")
