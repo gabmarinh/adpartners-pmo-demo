@@ -1,10 +1,9 @@
 import os
-import tempfile
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import pymupdf4llm
 from crewai import Agent, Task, Crew, Process, LLM
+from crewai_tools import FileReadTool
 
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
 st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀", layout="wide")
@@ -12,6 +11,7 @@ st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀",
 # ---------------- CONFIGURACIÓN DE SEGURIDAD ----------------
 os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
 
+# Extracción segura de la API Key para la nube
 try:
     groq_key = st.secrets["GROQ_API_KEY"]
 except Exception:
@@ -71,8 +71,9 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
+    # Bypass comprobado: usa la estructura de OpenAI apuntando al modelo activo de Groq
     return LLM(
-        model="openai/openai/gpt-oss-120b",
+        model="openai/gpt-oss-120b",
         api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         temperature=0
@@ -81,45 +82,26 @@ def iniciar_motor_ia():
 motor_blindado = iniciar_motor_ia()
 
 # ==========================================================
-# FUNCIONES DE EXTRACCIÓN AUTOMATIZADA (CACHÉ)
-# ==========================================================
-@st.cache_data(show_spinner=False)
-def extraer_texto_pdf(pdf_bytes):
-    # Guardamos el PDF en un archivo temporal seguro en la nube
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(pdf_bytes)
-        tmp_path = tmp.name
-    # Transformamos el PDF a Markdown puro
-    texto_md = pymupdf4llm.to_markdown(tmp_path)
-    os.remove(tmp_path) # Limpiamos el servidor
-    return texto_md
-
-# ==========================================================
-# DEMO 1: ASISTENTE RAG (AHORA CON LECTURA DINÁMICA DE PDF)
+# DEMO 1: ASISTENTE RAG
 # ==========================================================
 if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
     st.title("🤖 Asistente de Normativas PMO")
-    st.markdown("Sube el **Manual de Metodología (PDF)** original. La plataforma lo leerá automáticamente.")
     
-    archivo_pdf = st.file_uploader("Cargar documento (PDF)", type=["pdf"])
-    ruta_pdf_local = "manual_pmo.pdf"
-    
-    texto_documento = ""
-    
-    # Lógica híbrida: Si el usuario sube un archivo, lo procesa. Si no, usa el predeterminado.
-    if archivo_pdf is not None:
-        with st.spinner("Transformando PDF con IA (Esto tomará unos segundos)..."):
-            texto_documento = extraer_texto_pdf(archivo_pdf.read())
-        st.success("✅ Documento procesado e inyectado en la memoria del Agente.")
-    else:
-        if os.path.exists(ruta_pdf_local):
-            with open(ruta_pdf_local, "rb") as f:
-                texto_documento = extraer_texto_pdf(f.read())
-            st.info("Usando el manual predeterminado. Puedes subir uno nuevo arriba.")
-        else:
-            st.warning("No hay documento base. Por favor, sube un archivo PDF para comenzar.")
+    md_path = "normativas_pmo_demo.md"
 
-    # Sistema de Chat
+    def crear_agente_pmo():
+        md_tool = FileReadTool(file_path=md_path)
+        
+        return Agent(
+            role='Especialista en Normativas PMO',
+            goal='Responder dudas basándose exclusivamente en el documento Markdown.',
+            backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos del archivo proporcionado.',
+            tools=[md_tool], 
+            llm=motor_blindado, 
+            verbose=True, 
+            allow_delegation=False
+        )
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
@@ -133,90 +115,89 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
             st.markdown(prompt)
             
         with st.chat_message("assistant"):
-            if not texto_documento:
-                st.error("No hay ningún documento cargado para analizar.")
-            else:
-                with st.spinner("Analizando normativas..."):
-                    try:
-                        # Ya no usamos FileReadTool. Pasamos el texto directo para evitar bugs de bases de datos.
-                        agente_normativo = Agent(
-                            role='Especialista en Normativas PMO',
-                            goal='Responder dudas basándose EXCLUSIVAMENTE en el texto proporcionado.',
-                            backstory='Auditor estricto. Nunca inventas información. Buscas en el manual y respondes con viñetas claras.',
-                            llm=motor_blindado, 
-                            verbose=True, 
-                            allow_delegation=False
-                        )
-                        tarea = Task(
-                            description=f'Aquí tienes el manual completo de la empresa:\n\n{texto_documento}\n\nResponde detalladamente a esta pregunta del usuario basándote solo en el texto superior: "{prompt}"', 
-                            expected_output='Respuesta detallada y estructurada.', 
-                            agent=agente_normativo
-                        )
-                        resultado = str(Crew(agents=[agente_normativo], tasks=[tarea], process=Process.sequential).kickoff())
-                        st.markdown(resultado)
-                        st.session_state.messages.append({"role": "assistant", "content": resultado})
-                    except Exception as e:
-                        st.error(f"Error en el procesamiento: {e}")
+            with st.spinner("Buscando en repositorios..."):
+                try:
+                    agente = crear_agente_pmo()
+                    tarea = Task(
+                        description=f'Lee el contenido del archivo y responde la siguiente duda del usuario: "{prompt}"', 
+                        expected_output='Respuesta detallada y estructurada en viñetas.', 
+                        agent=agente
+                    )
+                    crew = Crew(agents=[agente], tasks=[tarea], process=Process.sequential)
+                    resultado = str(crew.kickoff())
+                    st.markdown(resultado)
+                    st.session_state.messages.append({"role": "assistant", "content": resultado})
+                except Exception as e:
+                    st.error(f"Error en el servidor: {e}")
 
 # ==========================================================
-# DEMO 2: TABLERO INTELIGENTE (AHORA CON LECTURA DE EXCEL)
+# DEMO 2: TABLERO INTELIGENTE
 # ==========================================================
 elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
-    st.title("📊 Tablero de Control y Análisis Financiero")
-    st.markdown("Sube tu matriz de **Indicadores PMO original (Excel)**. El sistema lo analizará en tiempo real.")
+    st.title("📊 Tablero de Control: KPIs y Estado RAG")
     
-    archivo_excel = st.file_uploader("Cargar Matriz (Excel)", type=["xlsx", "xls"])
-    ruta_excel_local = "kpis_pmo.xlsx"
+    csv_path = "proyectos_kpi.csv"
     
-    df = None
     try:
-        if archivo_excel is not None:
-            df = pd.read_excel(archivo_excel, engine="openpyxl")
-        elif os.path.exists(ruta_excel_local):
-            df = pd.read_excel(ruta_excel_local, engine="openpyxl")
-            st.info("Usando matriz predeterminada. Puedes subir un Excel nuevo arriba.")
-        else:
-            st.warning("Sube un archivo Excel para visualizar los datos.")
-            
-        if df is not None:
-            # Mostrar vista previa de los datos brutos
-            st.subheader("Datos Extraídos")
-            st.dataframe(df.head(10), use_container_width=True)
-            st.divider()
+        df = pd.read_csv(csv_path)
+        
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Total Proyectos", len(df))
+        m2.metric("Proyectos On Track", len(df[df['Estado_RAG'] == 'Green']))
+        m3.metric("Proyectos en Riesgo", len(df[df['Estado_RAG'] == 'Amber']))
+        m4.metric("Proyectos Críticos", len(df[df['Estado_RAG'] == 'Red']))
+        
+        col_pie1, col_pie2 = st.columns(2)
+        with col_pie1:
+            st.plotly_chart(px.pie(df, names='Estado_RAG', hole=0.4, title='Estado RAG', color='Estado_RAG', color_discrete_map={'Green':'#28a745', 'Amber':'#ffc107', 'Red':'#dc3545'}), use_container_width=True)
+        with col_pie2:
+            st.plotly_chart(px.pie(df, names='Nivel_Riesgo', hole=0.4, title='Nivel de Riesgo', color='Nivel_Riesgo', color_discrete_map={'Bajo':'#28a745', 'Medio':'#ffc107', 'Alto':'#dc3545'}), use_container_width=True)
 
-            if st.button("Generar Auditoría con IA 🧠", type="primary"):
-                with st.spinner("El Analista IA está procesando el archivo Excel..."):
-                    # Convertimos el DataFrame limpio a Markdown para la IA
-                    datos_texto = df.to_markdown(index=False)
-                    
-                    analista_financiero = Agent(
-                        role='Auditor Senior de PMO',
-                        goal='Analizar los datos del Excel y detectar riesgos, desviaciones y anomalías.',
-                        backstory='Eres un analista de AD Partners obsesionado con los datos. Encuentras patrones que los humanos no ven.',
-                        llm=motor_blindado, 
-                        verbose=True, 
-                        allow_delegation=False
-                    )
-                    tarea_analisis = Task(
-                        description=f"Analiza profundamente esta matriz de datos financieros/operativos:\n\n{datos_texto}\n\nIdentifica los puntos críticos, proyectos con problemas o cuellos de botella y redacta un reporte ejecutivo para la gerencia.", 
-                        expected_output="Un reporte ejecutivo estructurado (Diagnóstico, Hallazgos, Recomendaciones).", 
-                        agent=analista_financiero
-                    )
-                    reporte_final = str(Crew(agents=[analista_financiero], tasks=[tarea_analisis], process=Process.sequential).kickoff())
-                    
-                    st.success("Reporte de Auditoría Generado.")
-                    st.info(reporte_final)
+        st.divider()
 
-    except Exception as e:
-        st.error(f"Error al leer el archivo Excel. Asegúrate de que el formato sea correcto. Detalle: {e}")
+        def color_rag(val):
+            if val == 'Green': return 'background-color: #28a745; color: white; font-weight: bold;'
+            elif val == 'Amber': return 'background-color: #ffc107; color: black; font-weight: bold;'
+            elif val == 'Red': return 'background-color: #dc3545; color: white; font-weight: bold;'
+            return ''
+        
+        st.subheader("Detalle Operativo de Proyectos")
+        st.dataframe(df.style.map(color_rag, subset=['Estado_RAG']), use_container_width=True)
+
+        st.divider()
+
+        if st.button("Generar Reporte Ejecutivo con IA 🧠", type="primary"):
+            with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
+                datos_texto = df.to_markdown(index=False)
+                
+                analista_financiero = Agent(
+                    role='Analista Senior de PMO y Riesgos',
+                    goal='Analizar KPIs financieros y cruzar el estado RAG con niveles de riesgo.',
+                    backstory='Auditor experto de AD Partners. Eres preciso y te enfocas en mitigación de riesgos.',
+                    llm=motor_blindado, 
+                    verbose=True, 
+                    allow_delegation=False
+                )
+                tarea_analisis = Task(
+                    description=f"Analiza la siguiente matriz:\n\n{datos_texto}\n\nConcéntrate explícitamente en proyectos 'Red' y 'Amber'.", 
+                    expected_output="Un reporte ejecutivo estructurado evaluando el riesgo y desviaciones.", 
+                    agent=analista_financiero
+                )
+                reporte_final = str(Crew(agents=[analista_financiero], tasks=[tarea_analisis], process=Process.sequential).kickoff())
+                
+                st.success("Reporte generado.")
+                st.info(reporte_final)
+
+    except FileNotFoundError:
+        st.error(f"No se encontró el archivo CSV en la ruta especificada.")
 
 # ==========================================================
 # PANEL DE ADMINISTRACIÓN
 # ==========================================================
 elif demo_seleccionada == "⚙️ Panel de Administración":
-    st.title("⚙️ Gestión Interna")
+    st.title("⚙️ Gestión de Base de Conocimientos")
     if st.session_state.role != "admin":
         st.error("🚫 ACCESO DENEGADO")
     else:
         st.success("✅ Acceso Autorizado: Perfil Administrador")
-        st.markdown("La plataforma ahora procesa archivos dinámicamente. Módulos locales deshabilitados.")
+        st.markdown("Función de subida de archivos deshabilitada en la versión Demo Cloud.")
