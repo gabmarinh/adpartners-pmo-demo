@@ -5,6 +5,14 @@ import plotly.express as px
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import FileReadTool
 
+# --- PARCHE PARA EL BUG DE LITELLM ---
+try:
+    import crewai.llms.cache as crew_cache
+    crew_cache.mark_cache_breakpoint = lambda msg: msg
+except Exception:
+    pass
+# -------------------------------------
+
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
 st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀", layout="wide")
 
@@ -71,12 +79,12 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Bypass comprobado: usa la estructura de OpenAI apuntando al modelo activo de Groq
+    # Usamos Llama 3.1 70B o Mixtral con el prefijo nativo de groq
+    # Si llama-3.1-70b-versatile falló antes, usa mixtral
     return LLM(
-        model="openai/gpt-oss-120b",
-        api_key=groq_key,
-        base_url="https://api.groq.com/openai/v1",
-        temperature=0
+        model="groq/llama-3.1-70b-versatile", # O "groq/mixtral-8x7b-32768"
+        temperature=0,
+        api_key=groq_key
     )
 
 motor_blindado = iniciar_motor_ia()
