@@ -78,11 +78,10 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Usamos el modelo ultraestable y activo de respaldo en Groq
+    # Usamos la interfaz estándar compatible con el modelo predeterminado activo de Groq
     return LLM(
-        model="openai/llama-3.1-8b-instant",
+        model="groq/llama3-70b-8192",
         api_key=groq_key,
-        base_url="https://api.groq.com/openai/v1",
         temperature=0
     )
 
