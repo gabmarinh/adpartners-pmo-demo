@@ -78,10 +78,11 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Modelo actual recomendado por la infraestructura de Groq
+    # Enrutamiento explícito y blindado para Groq
     return LLM(
-        model="llama3-70b-8192", 
+        model="openai/llama-3.3-70b-versatile",
         api_key=groq_key,
+        base_url="https://api.groq.com/openai/v1",
         temperature=0
     )
 
