@@ -6,3 +6,4 @@ crewai-tools==1.15.23
 tabulate
 openpyxl
 pymupdf4llm
+litellm
