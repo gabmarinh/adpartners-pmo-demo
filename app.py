@@ -78,9 +78,8 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Usamos la interfaz estándar compatible con el modelo predeterminado activo de Groq
     return LLM(
-        model="groq/llama3-70b-8192",
+        model="groq/llama-3.3-70b-versatile",
         api_key=groq_key,
         temperature=0
     )
