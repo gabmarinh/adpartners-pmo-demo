@@ -78,9 +78,9 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Enrutamiento explícito y blindado para Groq
+    # Usamos el modelo ultraestable y activo de respaldo en Groq
     return LLM(
-        model="openai/llama-3.3-70b-versatile",
+        model="openai/llama-3.1-8b-instant",
         api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         temperature=0
