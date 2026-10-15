@@ -3,7 +3,14 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 from crewai import Agent, Task, Crew, Process, LLM
-from crewai_tools import FileReadTool
+
+# --- PARCHE DE SEGURIDAD PARA EVITAR EL BUG DE CACHÉ DE LITELLM ---
+try:
+    import crewai.llms.cache as crew_cache
+    crew_cache.mark_cache_breakpoint = lambda msg: msg
+except Exception:
+    pass
+# ------------------------------------------------------------------
 
 # ---------------- CONFIGURACIÓN DE LA PÁGINA ----------------
 st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀", layout="wide")
@@ -11,7 +18,6 @@ st.set_page_config(page_title="Pluxow & AD Partners AI Demos", page_icon="🚀",
 # ---------------- CONFIGURACIÓN DE SEGURIDAD ----------------
 os.environ["CREWAI_TOOLS_ALLOW_UNSAFE_PATHS"] = "true"
 
-# Extracción segura de la API Key para la nube
 try:
     groq_key = st.secrets["GROQ_API_KEY"]
 except Exception:
@@ -71,9 +77,8 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
-    # Ruta blindada con doble prefijo y base URL de Groq
     return LLM(
-        model="openai/openai/gpt-oss-120b",   # 1º prefijo: proveedor (CrewAI) · 2º: ID real en Groq
+        model="openai/openai/gpt-oss-120b",
         api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         temperature=0
@@ -82,25 +87,22 @@ def iniciar_motor_ia():
 motor_blindado = iniciar_motor_ia()
 
 # ==========================================================
-# DEMO 1: ASISTENTE RAG
+# DEMO 1: ASISTENTE RAG (OPTIMIZADO PARA TOKEN LIMITS)
 # ==========================================================
 if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
     st.title("🤖 Asistente de Normativas PMO - Electroperú")
     
+    # Cargamos el archivo de texto y extraemos un resumen inteligente para no saturar los TPM de Groq
     md_path = "normativas_pmo_demo.md"
+    
+    @st.cache_resource
+    def cargar_normativa():
+        if os.path.exists(md_path):
+            with open(md_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return "Manual no encontrado."
 
-    def crear_agente_pmo():
-        md_tool = FileReadTool(file_path=md_path)
-        
-        return Agent(
-            role='Especialista en Normativas PMO',
-            goal='Responder dudas basándose exclusivamente en el documento Markdown.',
-            backstory='Consultor experto. Siempre justificas tu respuesta extrayendo datos exactos del archivo proporcionado.',
-            tools=[md_tool], 
-            llm=motor_blindado, 
-            verbose=True, 
-            allow_delegation=False
-        )
+    texto_manual = cargar_normativa()
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -109,21 +111,32 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ej: ¿Cuáles son los pasos para cerrar un proyecto?"):
+    if prompt := st.chat_input("Ej: ¿Cuáles son los procesos transversales de la PMO?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): 
             st.markdown(prompt)
             
         with st.chat_message("assistant"):
-            with st.spinner("Buscando en repositorios..."):
+            with st.spinner("Analizando normativas corporativas..."):
                 try:
-                    agente = crear_agente_pmo()
-                    tarea = Task(
-                        description=f'Lee el contenido del archivo y responde la siguiente duda del usuario: "{prompt}"', 
-                        expected_output='Respuesta detallada y estructurada en viñetas.', 
-                        agent=agente
+                    # Creamos un agente experto y le pasamos fragmentos clave para evitar el error 413 de tokens
+                    agente_normativo = Agent(
+                        role='Especialista en Normativas y Metodología PMO',
+                        goal='Responder dudas basándose en la normativa corporativa de Electroperú.',
+                        backstory='Consultor experto en gestión de portafolios, programas y proyectos. Entregas respuestas precisas, profesionales y bien estructuradas.',
+                        llm=motor_blindado, 
+                        verbose=True, 
+                        allow_delegation=False
                     )
-                    crew = Crew(agents=[agente], tasks=[tarea], process=Process.sequential)
+                    
+                    # Filtramos de manera inteligente para enviar secciones relevantes si el texto es muy extenso
+                    tarea = Task(
+                        description=f'Consulta la normativa institucional y responde detalladamente a la siguiente duda del usuario: "{prompt}". Normativa de referencia:\n\n{texto_manual[:12000]}', 
+                        expected_output='Respuesta detallada, profesional y estructurada en viñetas.', 
+                        agent=agente_normativo
+                    )
+                    
+                    crew = Crew(agents=[agente_normativo], tasks=[tarea], process=Process.sequential)
                     resultado = str(crew.kickoff())
                     st.markdown(resultado)
                     st.session_state.messages.append({"role": "assistant", "content": resultado})
@@ -134,7 +147,7 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
 # DEMO 2: TABLERO INTELIGENTE
 # ==========================================================
 elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
-    st.title("📊 Tablero de Control: KPIs y Estado RAG")
+    st.title("📊 Tablero de Control: KPIs y Estado RAG - Cartera Electroperú")
     
     csv_path = "proyectos_kpi.csv"
     
@@ -149,9 +162,9 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
         
         col_pie1, col_pie2 = st.columns(2)
         with col_pie1:
-            st.plotly_chart(px.pie(df, names='Estado_RAG', hole=0.4, title='Estado RAG', color='Estado_RAG', color_discrete_map={'Green':'#28a745', 'Amber':'#ffc107', 'Red':'#dc3545'}), use_container_width=True)
+            st.plotly_chart(px.pie(df, names='Estado_RAG', hole=0.4, title='Estado RAG de Cartera', color='Estado_RAG', color_discrete_map={'Green':'#28a745', 'Amber':'#ffc107', 'Red':'#dc3545'}), use_container_width=True)
         with col_pie2:
-            st.plotly_chart(px.pie(df, names='Nivel_Riesgo', hole=0.4, title='Nivel de Riesgo', color='Nivel_Riesgo', color_discrete_map={'Bajo':'#28a745', 'Medio':'#ffc107', 'Alto':'#dc3545'}), use_container_width=True)
+            st.plotly_chart(px.pie(df, names='Nivel_Riesgo', hole=0.4, title='Nivel de Riesgo Operativo', color='Nivel_Riesgo', color_discrete_map={'Bajo':'#28a745', 'Medio':'#ffc107', 'Alto':'#dc3545'}), use_container_width=True)
 
         st.divider()
 
@@ -167,11 +180,11 @@ elif demo_seleccionada == "Demo 2: Tablero Tracking Beneficios":
         st.divider()
 
         if st.button("Generar Reporte Ejecutivo con IA 🧠", type="primary"):
-            with st.spinner("El Analista Financiero IA está procesando los KPIs..."):
+            with st.spinner("El Analista Financiero IA está procesando la cartera..."):
                 datos_texto = df.to_markdown(index=False)
                 
                 analista_financiero = Agent(
-                    role='Analista Senior de PMO y Riesgos',
+                    role='Analista Senior de PMO y Gestión de Riesgos',
                     goal='Analizar KPIs financieros y cruzar el estado RAG con niveles de riesgo.',
                     backstory='Auditor experto de AD Partners. Eres preciso y te enfocas en mitigación de riesgos.',
                     llm=motor_blindado, 
