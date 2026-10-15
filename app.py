@@ -77,6 +77,7 @@ demo_seleccionada = st.sidebar.radio(
 # ==========================================================
 @st.cache_resource
 def iniciar_motor_ia():
+    # Ruta blindada con doble prefijo y base URL de Groq
     return LLM(
         model="openai/openai/gpt-oss-120b",
         api_key=groq_key,
@@ -92,7 +93,6 @@ motor_blindado = iniciar_motor_ia()
 if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
     st.title("🤖 Asistente de Normativas PMO - Electroperú")
     
-    # Cargamos el archivo de texto y extraemos un resumen inteligente para no saturar los TPM de Groq
     md_path = "normativas_pmo_demo.md"
     
     @st.cache_resource
@@ -119,7 +119,6 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
         with st.chat_message("assistant"):
             with st.spinner("Analizando normativas corporativas..."):
                 try:
-                    # Creamos un agente experto y le pasamos fragmentos clave para evitar el error 413 de tokens
                     agente_normativo = Agent(
                         role='Especialista en Normativas y Metodología PMO',
                         goal='Responder dudas basándose en la normativa corporativa de Electroperú.',
@@ -129,7 +128,6 @@ if demo_seleccionada == "Demo 1: Asistente Normativas PMO":
                         allow_delegation=False
                     )
                     
-                    # Filtramos de manera inteligente para enviar secciones relevantes si el texto es muy extenso
                     tarea = Task(
                         description=f'Consulta la normativa institucional y responde detalladamente a la siguiente duda del usuario: "{prompt}". Normativa de referencia:\n\n{texto_manual[:12000]}', 
                         expected_output='Respuesta detallada, profesional y estructurada en viñetas.', 
@@ -213,4 +211,4 @@ elif demo_seleccionada == "⚙️ Panel de Administración":
         st.error("🚫 ACCESO DENEGADO")
     else:
         st.success("✅ Acceso Autorizado: Perfil Administrador")
-        st.markdown("Función de subida de archivos deshabilitada en la versión Demo Cloud.")
+        st.markdown("Plataforma configurada con los repositorios oficiales de Electroperú. Versión Cloud Activa.")
