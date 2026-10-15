@@ -1,0 +1,23 @@
+ID_Proyecto,Nombre_Proyecto,Presupuesto,Plan T1,Real T1,Plan T2,Real T2,Plan T3,Real T3,Plan T4,Real T4,Consumo Real Total,Variación (%),Estado de Presupuesto,Perfil de Riesgo del Proyecto,Estado_RAG,Nivel_Riesgo
+PRJ-001,Migracion ERP SAP,150000,30000,28500,45000,48000,45000,44000,30000,31000,151500,0.01,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-002,Implementacion CRM,85000,15000,15000,25000,27000,25000,26000,20000,19500,87500,0.029411764705882353,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-003,Dashboard Power BI PMO,25000,5000,4800,10000,9500,7000,7200,3000,3000,24500,-0.02,Dentro del margen,Perfil Moderado,Green,Medio
+PRJ-004,Rediseño App Movil,95000,20000,22000,30000,34000,25000,27000,20000,18000,101000,0.06315789473684211,Sobrecosto moderado,Perfil Alto,Amber,Alto
+PRJ-005,Optimizacion Cadena Frio,210000,40000,38000,60000,62000,60000,65000,50000,48000,213000,0.014285714285714285,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-006,Automatizacion WMS,180000,30000,30000,50000,55000,60000,58000,40000,41000,184000,0.022222222222222223,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-007,Actualizacion Infraestructura Cloud,130000,25000,24000,40000,38000,40000,39000,25000,25000,126000,-0.03076923076923077,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-008,Portal Autoservicio Clientes,60000,10000,11000,20000,21500,20000,19000,10000,10000,61500,0.025,Dentro del margen,Perfil Moderado,Green,Medio
+PRJ-009,Seguridad Ciberneitca ISO27001,110000,20000,18000,35000,32000,35000,33000,20000,21000,104000,-0.05454545454545454,Subejecución/Ahorro,Perfil Alto,Red,Alto
+PRJ-010,Modelo IA Prediccion Demanda,75000,15000,15500,25000,26000,20000,21000,15000,14000,76500,0.02,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-011,Consolidacion Centros de Datos,320000,60000,65000,100000,108000,100000,105000,60000,58000,336000,0.05,Sobrecosto Moderado,Perfil Alto,Amber,Alto
+PRJ-012,Rediseño Red Logistica Norte,240000,40000,39000,80000,78000,80000,82000,40000,40000,239000,-0.004166666666666667,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-013,Modulo Facturacion Electronica,40000,10000,10000,12000,12000,10000,9800,8000,8200,40000,0.0,Ejecución Exacta,Perfil Alto,Red,Alto
+PRJ-014,Plataforma E-learning Corporativa,55000,10000,9000,18000,17500,17000,18000,10000,10000,54500,-0.00909090909090909,Dentro del margen,Perfil Moderado,Green,Medio
+PRJ-015,Integracion Pasarela de Pagos,48000,10000,10500,15000,16000,13000,12500,10000,10000,49000,0.020833333333333332,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-016,Migracion Telefonía IP,35000,8000,7500,10000,9800,10000,10000,7000,7000,34300,-0.02,Dentro del margen,Perfil Moderado,Green,Medio
+PRJ-017,Sistema Control de Calidad Lotes,140000,25000,27000,45000,48000,45000,44000,25000,23000,142000,0.014285714285714285,Dentro del margen,Perfil Alto,Green,Alto
+PRJ-018,Plataforma Business Intelligence,120000,20000,19500,40000,41000,40000,39000,20000,20500,120000,0.0,Ejecución Exacta,Perfil Moderado,Red,Medio
+PRJ-019,Digitalizacion Documental HR,30000,5000,5000,10000,9500,10000,10000,5000,5000,29500,-0.016666666666666666,Dentro del margen,Perfil Moderado,Green,Medio
+PRJ-020,Auditoria Gobierno TI,50000,10000,10000,15000,16500,15000,14000,10000,10000,50500,0.01,Dentro del margen,Perfil Moderado,Green,Medio
+PRJ-021,Upgrade Base de Datos Core,175000,30000,32000,55000,58000,55000,54000,35000,33000,177000,0.011428571428571429,Dentro del margen,Perfil Alto,Green,Alto
+,,2373000,438000,441300,740000,767300,732000,737500,463000,455200,2401300,0.01192583227981458,Excelente control,,Red,Bajo
